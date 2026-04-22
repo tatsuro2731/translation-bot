@@ -2,8 +2,11 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>Tetris</title>
 <style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { overscroll-behavior: none; touch-action: manipulation; }
   body {
     margin: 0;
     min-height: 100vh;
@@ -15,11 +18,17 @@
     align-items: center;
     gap: 24px;
     padding: 20px;
+    user-select: none;
+    -webkit-user-select: none;
   }
   canvas {
     background: #000;
     border: 2px solid #444;
     image-rendering: pixelated;
+    display: block;
+    max-width: 100%;
+    height: auto;
+    touch-action: none;
   }
   .panel {
     display: flex;
@@ -55,6 +64,7 @@
     gap: 12px;
     color: #fff;
     font-size: 28px;
+    z-index: 10;
   }
   #overlay button {
     font-size: 16px;
@@ -65,10 +75,75 @@
     border-radius: 4px;
     cursor: pointer;
   }
+  #touch-controls { display: none; }
+  .tc-row { display: flex; justify-content: center; gap: 10px; margin-top: 8px; }
+  .tc-btn {
+    background: #2a2a2a;
+    border: 1px solid #444;
+    color: #fff;
+    font-size: 22px;
+    font-weight: bold;
+    width: 64px;
+    height: 64px;
+    border-radius: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+  .tc-btn:active { background: #4caf50; }
+  .tc-btn.wide { width: 140px; }
+  .top-stats { display: none; }
+
+  @media (max-width: 720px) {
+    body {
+      flex-direction: column;
+      gap: 10px;
+      padding: 8px;
+      align-items: stretch;
+    }
+    .panel { display: none; }
+    #touch-controls { display: block; }
+    .top-stats {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .top-stats .box { flex: 1; padding: 6px 8px; text-align: center; }
+    .top-stats .value { font-size: 16px; }
+    .top-stats h2 { font-size: 10px; margin: 0 0 2px 0; }
+    canvas#board { margin: 0 auto; }
+  }
 </style>
 </head>
 <body>
-  <canvas id="board" width="300" height="600"></canvas>
+  <div style="display:flex; flex-direction:column; gap:8px; align-items:center;">
+    <div class="top-stats">
+      <div class="box"><h2>Score</h2><div class="value" id="score-m">0</div></div>
+      <div class="box"><h2>Lines</h2><div class="value" id="lines-m">0</div></div>
+      <div class="box"><h2>Level</h2><div class="value" id="level-m">1</div></div>
+    </div>
+    <canvas id="board" width="300" height="600"></canvas>
+    <div id="touch-controls">
+      <div class="tc-row">
+        <button class="tc-btn" id="btn-rot-ccw" aria-label="rotate ccw">⟲</button>
+        <button class="tc-btn" id="btn-rot-cw" aria-label="rotate cw">⟳</button>
+        <button class="tc-btn" id="btn-pause" aria-label="pause">⏸</button>
+      </div>
+      <div class="tc-row">
+        <button class="tc-btn" id="btn-left" aria-label="left">◀</button>
+        <button class="tc-btn" id="btn-down" aria-label="down">▼</button>
+        <button class="tc-btn" id="btn-right" aria-label="right">▶</button>
+      </div>
+      <div class="tc-row">
+        <button class="tc-btn wide" id="btn-drop" aria-label="hard drop">DROP</button>
+      </div>
+    </div>
+  </div>
   <div class="panel">
     <div class="box">
       <h1>TETRIS</h1>
@@ -392,6 +467,19 @@
     scoreEl.textContent = score;
     linesEl.textContent = lines;
     levelEl.textContent = level;
+    const sm = document.getElementById('score-m');
+    const lm = document.getElementById('lines-m');
+    const vm = document.getElementById('level-m');
+    if (sm) sm.textContent = score;
+    if (lm) lm.textContent = lines;
+    if (vm) vm.textContent = level;
+  }
+
+  function togglePause() {
+    if (gameOver) return;
+    paused = !paused;
+    overlayText.textContent = 'Paused';
+    overlay.style.display = paused ? 'flex' : 'none';
   }
 
   function update(time = 0) {
@@ -433,9 +521,7 @@
   document.addEventListener('keydown', (e) => {
     if (gameOver) return;
     if (e.key === 'p' || e.key === 'P') {
-      paused = !paused;
-      overlayText.textContent = 'Paused';
-      overlay.style.display = paused ? 'flex' : 'none';
+      togglePause();
       return;
     }
     if (paused) return;
@@ -454,6 +540,87 @@
         break;
     }
   });
+
+  function bindButton(id, action, repeat = false) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    let intervalId = null;
+    const start = (e) => {
+      e.preventDefault();
+      if (gameOver || paused) { if (id === 'btn-pause') togglePause(); return; }
+      action();
+      if (repeat) {
+        intervalId = setInterval(() => {
+          if (!gameOver && !paused) action();
+        }, 100);
+      }
+    };
+    const end = (e) => {
+      if (e) e.preventDefault();
+      if (intervalId) { clearInterval(intervalId); intervalId = null; }
+    };
+    el.addEventListener('touchstart', start, { passive: false });
+    el.addEventListener('touchend', end, { passive: false });
+    el.addEventListener('touchcancel', end, { passive: false });
+    el.addEventListener('mousedown', start);
+    el.addEventListener('mouseup', end);
+    el.addEventListener('mouseleave', end);
+  }
+
+  bindButton('btn-left', () => move(-1), true);
+  bindButton('btn-right', () => move(1), true);
+  bindButton('btn-down', () => softDrop(), true);
+  bindButton('btn-rot-cw', () => rotate(1), false);
+  bindButton('btn-rot-ccw', () => rotate(-1), false);
+  bindButton('btn-drop', () => hardDrop(), false);
+  const pauseBtn = document.getElementById('btn-pause');
+  if (pauseBtn) {
+    const pauseHandler = (e) => { e.preventDefault(); togglePause(); };
+    pauseBtn.addEventListener('touchstart', pauseHandler, { passive: false });
+    pauseBtn.addEventListener('click', pauseHandler);
+  }
+
+  let touchStart = null;
+  let swipeHandled = false;
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    const t = e.touches[0];
+    touchStart = { x: t.clientX, y: t.clientY, time: Date.now(), lastX: t.clientX, lastY: t.clientY };
+    swipeHandled = false;
+  }, { passive: true });
+
+  canvas.addEventListener('touchmove', (e) => {
+    if (!touchStart || gameOver || paused) return;
+    const t = e.touches[0];
+    const dx = t.clientX - touchStart.lastX;
+    const dy = t.clientY - touchStart.lastY;
+    const cellSize = canvas.getBoundingClientRect().width / COLS;
+    if (Math.abs(dx) > cellSize) {
+      move(dx > 0 ? 1 : -1);
+      touchStart.lastX = t.clientX;
+      swipeHandled = true;
+    }
+    if (dy > cellSize) {
+      softDrop();
+      touchStart.lastY = t.clientY;
+      swipeHandled = true;
+    }
+  }, { passive: true });
+
+  canvas.addEventListener('touchend', (e) => {
+    if (!touchStart || gameOver || paused) { touchStart = null; return; }
+    const dt = Date.now() - touchStart.time;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStart.x;
+    const dy = t.clientY - touchStart.y;
+    const dist = Math.hypot(dx, dy);
+    if (!swipeHandled && dist < 15 && dt < 250) {
+      rotate(1);
+    } else if (dy > 80 && Math.abs(dx) < 50 && dt < 300) {
+      hardDrop();
+    }
+    touchStart = null;
+  }, { passive: true });
 
   restartBtn.addEventListener('click', reset);
 
