@@ -75,7 +75,11 @@
     border-radius: 4px;
     cursor: pointer;
   }
+  #overlay #restart { background: #e53935; }
   #touch-controls { display: none; }
+  .mobile-next { display: none; }
+  .mobile-next canvas { background: #000; border: 1px solid #333; border-radius: 4px; }
+  .mn-label { font-size: 10px; color: #aaa; letter-spacing: 2px; margin-right: 6px; }
   .tc-row { display: flex; justify-content: center; gap: 10px; margin-top: 8px; }
   .tc-btn {
     background: #2a2a2a;
@@ -107,6 +111,7 @@
     }
     .panel { display: none; }
     #touch-controls { display: block; }
+    .mobile-next { display: flex; align-items: center; justify-content: center; gap: 8px; }
     .top-stats {
       display: flex;
       justify-content: space-between;
@@ -126,6 +131,10 @@
       <div class="box"><h2>Score</h2><div class="value" id="score-m">0</div></div>
       <div class="box"><h2>Lines</h2><div class="value" id="lines-m">0</div></div>
       <div class="box"><h2>Level</h2><div class="value" id="level-m">1</div></div>
+    </div>
+    <div class="mobile-next">
+      <span class="mn-label">NEXT</span>
+      <canvas id="next-m" width="220" height="56"></canvas>
     </div>
     <canvas id="board" width="300" height="600"></canvas>
     <div id="touch-controls">
@@ -150,7 +159,7 @@
     </div>
     <div class="box">
       <h2>Next</h2>
-      <canvas id="next" width="120" height="120"></canvas>
+      <canvas id="next" width="120" height="300"></canvas>
     </div>
     <div class="box">
       <h2>Score</h2>
@@ -178,6 +187,7 @@
   <div id="overlay">
     <div id="overlay-text">Game Over</div>
     <button id="restart">Restart</button>
+    <button id="resume">Resume</button>
   </div>
 
   <button id="mute-btn" aria-label="mute" style="position:fixed;top:10px;right:10px;z-index:20;background:#2a2a2a;border:1px solid #444;color:#fff;font-size:18px;width:40px;height:40px;border-radius:8px;cursor:pointer;">🔊</button>
@@ -192,6 +202,8 @@
   const ctx = canvas.getContext('2d');
   const nextCanvas = document.getElementById('next');
   const nctx = nextCanvas.getContext('2d');
+  const nextCanvasM = document.getElementById('next-m');
+  const nctxM = nextCanvasM ? nextCanvasM.getContext('2d') : null;
 
   const scoreEl = document.getElementById('score');
   const linesEl = document.getElementById('lines');
@@ -257,7 +269,8 @@
 
   const TYPES = Object.keys(SHAPES);
 
-  let board, current, next, score, lines, level, dropInterval, lastTime, dropCounter, paused, gameOver;
+  const QUEUE_SIZE = 3;
+  let board, current, queue, score, lines, level, dropInterval, lastTime, dropCounter, paused, gameOver;
 
   let audioCtx = null;
   let muted = false;
@@ -483,7 +496,7 @@
 
   function clearLines() {
     const fullRows = [];
-    for (let y = ROWS - 1; y >= 0; y--) {
+    for (let y = 0; y < ROWS; y++) {
       if (board[y].every(cell => cell)) fullRows.push(y);
     }
     if (fullRows.length === 0) return;
@@ -491,10 +504,10 @@
     spawnClearEffects(fullRows);
     playClearSound(fullRows.length);
 
-    fullRows.sort((a, b) => b - a).forEach(y => {
-      board.splice(y, 1);
-      board.unshift(Array(COLS).fill(null));
-    });
+    const fullSet = new Set(fullRows);
+    const kept = board.filter((_, y) => !fullSet.has(y));
+    while (kept.length < ROWS) kept.unshift(Array(COLS).fill(null));
+    board = kept;
 
     const cleared = fullRows.length;
     const points = [0, 100, 300, 500, 800][cleared] * level;
@@ -552,12 +565,12 @@
     playLockSound();
     merge(current);
     clearLines();
-    current = next;
-    next = randomPiece();
+    current = queue.shift();
+    queue.push(randomPiece());
     if (collides(current, 0, 0)) {
       gameOver = true;
       overlayText.textContent = 'Game Over';
-      overlay.style.display = 'flex';
+      showOverlay('gameover');
       playGameOverSound();
     }
   }
@@ -639,26 +652,46 @@
     drawNext();
   }
 
-  function drawNext() {
-    nctx.fillStyle = '#000';
-    nctx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
-    const matrix = SHAPES[next.type][0];
-    const size = matrix.length;
-    const cell = 24;
-    const offX = (nextCanvas.width - size * cell) / 2;
-    const offY = (nextCanvas.height - size * cell) / 2;
+  function drawPieceOn(ctx2, type, cx, cy, cell) {
+    const matrix = SHAPES[type][0];
+    const w = matrix[0].length * cell;
+    const h = matrix.length * cell;
+    const offX = cx - w / 2;
+    const offY = cy - h / 2;
     for (let y = 0; y < matrix.length; y++) {
       for (let x = 0; x < matrix[y].length; x++) {
         if (matrix[y][x]) {
-          nctx.fillStyle = COLORS[next.type];
-          nctx.fillRect(offX + x * cell, offY + y * cell, cell, cell);
-          nctx.fillStyle = 'rgba(255,255,255,0.25)';
-          nctx.fillRect(offX + x * cell, offY + y * cell, cell, 2);
-          nctx.fillRect(offX + x * cell, offY + y * cell, 2, cell);
-          nctx.fillStyle = 'rgba(0,0,0,0.35)';
-          nctx.fillRect(offX + x * cell, offY + y * cell + cell - 2, cell, 2);
-          nctx.fillRect(offX + x * cell + cell - 2, offY + y * cell, 2, cell);
+          const px = offX + x * cell;
+          const py = offY + y * cell;
+          ctx2.fillStyle = COLORS[type];
+          ctx2.fillRect(px, py, cell, cell);
+          ctx2.fillStyle = 'rgba(255,255,255,0.25)';
+          ctx2.fillRect(px, py, cell, 2);
+          ctx2.fillRect(px, py, 2, cell);
+          ctx2.fillStyle = 'rgba(0,0,0,0.35)';
+          ctx2.fillRect(px, py + cell - 2, cell, 2);
+          ctx2.fillRect(px + cell - 2, py, 2, cell);
         }
+      }
+    }
+  }
+
+  function drawNext() {
+    nctx.fillStyle = '#000';
+    nctx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
+    const slotH = nextCanvas.height / QUEUE_SIZE;
+    for (let i = 0; i < queue.length; i++) {
+      const cell = i === 0 ? 22 : 16;
+      drawPieceOn(nctx, queue[i].type, nextCanvas.width / 2, slotH * i + slotH / 2, cell);
+    }
+
+    if (nctxM) {
+      nctxM.fillStyle = '#000';
+      nctxM.fillRect(0, 0, nextCanvasM.width, nextCanvasM.height);
+      const slotW = nextCanvasM.width / QUEUE_SIZE;
+      for (let i = 0; i < queue.length; i++) {
+        const cell = i === 0 ? 12 : 10;
+        drawPieceOn(nctxM, queue[i].type, slotW * i + slotW / 2, nextCanvasM.height / 2, cell);
       }
     }
   }
@@ -678,8 +711,25 @@
   function togglePause() {
     if (gameOver) return;
     paused = !paused;
-    overlayText.textContent = 'Paused';
-    overlay.style.display = paused ? 'flex' : 'none';
+    if (paused) {
+      overlayText.textContent = 'Paused';
+      showOverlay('paused');
+    } else {
+      overlay.style.display = 'none';
+    }
+  }
+
+  function showOverlay(mode) {
+    overlay.style.display = 'flex';
+    const restartEl = document.getElementById('restart');
+    const resumeEl = document.getElementById('resume');
+    if (mode === 'paused') {
+      restartEl.style.display = 'none';
+      resumeEl.style.display = 'inline-block';
+    } else {
+      restartEl.style.display = 'inline-block';
+      resumeEl.style.display = 'none';
+    }
   }
 
   function update(time = 0) {
@@ -706,7 +756,7 @@
   function reset() {
     board = createBoard();
     current = randomPiece();
-    next = randomPiece();
+    queue = Array.from({length: QUEUE_SIZE}, () => randomPiece());
     score = 0;
     lines = 0;
     level = 1;
@@ -834,6 +884,13 @@
   }, { passive: true });
 
   restartBtn.addEventListener('click', reset);
+  document.getElementById('resume').addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (paused) togglePause();
+  });
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay && paused) togglePause();
+  });
 
   reset();
 })();
