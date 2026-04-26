@@ -15,7 +15,10 @@ const items = [
 export function BottomNav() {
   const path = usePathname();
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[420px] bg-white border-t border-ink-100 z-30">
+    <nav
+      className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[440px] bg-white border-t border-ink-100 z-30"
+      style={{ paddingBottom: "var(--safe-bottom)" }}
+    >
       <ul className="grid grid-cols-5 h-[64px] items-center">
         {items.map(({ href, label, Icon }) => {
           const active = path === href || path.startsWith(href + "/");
@@ -34,7 +37,6 @@ export function BottomNav() {
           );
         })}
       </ul>
-      <div className="home-indicator" />
     </nav>
   );
 }

@@ -64,7 +64,7 @@ export default function InputPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg pb-32">
+    <div className="min-h-[100svh] bg-bg" style={{ paddingBottom: "calc(96px + var(--safe-bottom))" }}>
       <div className="statusbar" />
       <header className="px-4 pt-2 pb-3 flex items-center">
         <Link href="/home" aria-label="閉じる" className="text-ink-700">
@@ -192,14 +192,16 @@ export default function InputPage() {
       </div>
 
       {/* 保存ボタン */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[420px] p-4 bg-bg/95 backdrop-blur border-t border-ink-100">
+      <div
+        className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[440px] p-4 bg-bg/95 backdrop-blur border-t border-ink-100"
+        style={{ paddingBottom: "calc(1rem + var(--safe-bottom))" }}
+      >
         <button
           onClick={save}
           className="w-full h-14 rounded-2xl bg-brand-500 text-white text-base font-bold active:bg-brand-600"
         >
           保存
         </button>
-        <div className="home-indicator" />
       </div>
     </div>
   );

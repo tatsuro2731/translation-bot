@@ -1,0 +1,24 @@
+{
+  "name": "あといくら家計簿",
+  "short_name": "あといくら",
+  "description": "個人事業主のための家計簿アプリ",
+  "lang": "ja",
+  "dir": "ltr",
+  "start_url": "/home",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F7F4EE",
+  "theme_color": "#22A055",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    { "src": "/icon-192.png",          "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png",          "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon.svg",              "sizes": "any",     "type": "image/svg+xml" }
+  ],
+  "shortcuts": [
+    { "name": "支出を入力", "short_name": "入力", "url": "/input",   "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
+    { "name": "履歴",       "short_name": "履歴", "url": "/history", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

@@ -36,7 +36,7 @@ export default function CashPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg pb-24">
+    <div className="min-h-[100svh] bg-bg" style={{ paddingBottom: "calc(80px + var(--safe-bottom))" }}>
       <div className="statusbar" />
       <header className="px-4 pt-2 pb-3 flex items-center">
         <Link href="/home" className="text-ink-700"><CloseIcon className="w-6 h-6" /></Link>

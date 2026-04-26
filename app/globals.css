@@ -4,6 +4,11 @@
 
 :root {
   color-scheme: light;
+  --safe-top:    env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left:   env(safe-area-inset-left, 0px);
+  --safe-right:  env(safe-area-inset-right, 0px);
+  --bottom-nav-h: 64px;
 }
 
 html, body {
@@ -11,21 +16,39 @@ html, body {
   color: #1A1F1B;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: contain;
 }
+
+/* Standalone (PWA) では body が引き伸ばされるので 100svh ベースに */
+html, body { min-height: 100svh; }
+
+/* ピンチズーム禁止 */
+body { touch-action: manipulation; }
+
+/* 入力フォントサイズ16px未満だとiOSが拡大ズームするので16px以上に */
+input, select, textarea, button { font: inherit; }
+input, select, textarea { font-size: 16px; }
+
+/* スクロールチェイン抑止 */
+.no-bounce { overscroll-behavior: none; }
 
 /* Hide number input spinners */
 input[type=number]::-webkit-outer-spin-button,
 input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 input[type=number] { -moz-appearance: textfield; }
 
-/* ステータスバー風の上部余白 */
-.statusbar { height: 22px; }
+/* セーフエリア対応 */
+.statusbar { height: max(var(--safe-top), 8px); }
 
-/* iOS風ホームインジケータ余白 */
-.home-indicator { height: 14px; }
-
-/* スクロールでアクションボタンが隠れないように */
-.tab-safe { padding-bottom: 80px; }
+/* ボトムナビ + ホームインジケータの合計高さ分のパディング */
+.tab-safe {
+  padding-bottom: calc(var(--bottom-nav-h) + var(--safe-bottom) + 8px);
+}
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
+
+/* Standalone (ホーム画面起動) のときだけ適用したいスタイル用 */
+@media all and (display-mode: standalone) {
+  html { background: #22A055; } /* 引き伸ばし時の地色を theme_color に合わせる */
+}
