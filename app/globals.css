@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html, body {
+  background: #F7F4EE;
+  color: #1A1F1B;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Hide number input spinners */
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }
+
+/* ステータスバー風の上部余白 */
+.statusbar { height: 22px; }
+
+/* iOS風ホームインジケータ余白 */
+.home-indicator { height: 14px; }
+
+/* スクロールでアクションボタンが隠れないように */
+.tab-safe { padding-bottom: 80px; }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
